@@ -1,0 +1,166 @@
+// VerilogA for nFET
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+
+`define pi		3.1416
+`define hbar	1.05458e-34		//Modified planks constant
+`define q		1.60218e-19		//Charge
+`define epso	8.85418e-12		// Permittivity of free space
+`define kBT		0.0259 			// eV
+`define m0		9.1095e-31 		// free electron mass
+
+module bal_nFET(Drain, Gate, Source);
+
+	inout Drain, Gate, Source;
+	electrical Drain, Gate, Source; //External Nodes
+	electrical Vdrain, Vgate,Vsource, phi; // Internal nodes
+
+	//Instance Parameters
+	parameter integer para_cap=0 from [0:1];			// 0 for non-parasitic, 1 for parasitic
+	parameter real Lg = 15.0e-9 from [0:inf);			// Gate length
+	parameter real Wg = 15.0e-9 from [0:inf);			// Gate Width
+		
+	parameter real tins = 2.8e-9 from [0:inf);			//insulator  thickness
+	parameter real eins = 25.0 from [0:inf); 			//Dielectric of insulator
+
+	//Model Parameters
+	//parameter real Csub = 0.0e-12 from [0:inf);
+
+	//Physical parameters
+	parameter real Eg = 1.8 from (0:inf);			//bandgap
+	parameter real mt0 = 0.45 from (0:inf);			//transport effective mass of silicon
+
+	//Physical parameters
+	parameter real Ef = 0.6752 from [0:inf);			//to mimic the Schottky barrier height 
+	parameter real VFB = 0.0 from [0:inf);			//Flat band voltage
+	
+	//---------- Variables ---------------- 
+	// Current, transmission, reflection, kT length
+	real I_DS;
+	//    Cox,  source quantum cap, drain quantum cap....
+	real Cins, Cgs, Cgd; 
+	
+	// delta_phi	for self consitent loop. I(G_Qtotal)=I(G_Qchannel)
+	real G_Qtotal, G_Qchannel;
+	
+	// E-k related
+
+	real mt, Egh;
+	real degen; // valley degen
+	real DOS; 
+
+	// Bias condition
+	real v_vd;			// Vdrain voltage
+	real v_vs;			// Vsource voltage
+	real v_vg;			// Vgate voltage
+	real v_phi;			// Voltage of node phib
+
+	//**********Fermi half integral (approximation) eqs. (22)-(24) of J. S. Blakemore, Solid-St. Electron, 25, 1067 (1982)***************
+	analog function real fermi_half_int;
+		input eta;
+		real eta,mu,x,xi;
+		begin
+			x=eta;
+			mu=pow(x,4.0)+50+33.6*x*(1.0-0.68*exp(-0.17*pow((x+1.0),2.0)));
+			xi=3.0*sqrt(`pi)/(4.0*pow(mu,3.0/8.0));
+			fermi_half_int=pow((exp(-x)+xi),-1.0);
+		end
+	endfunction
+
+	//**********End of Fermi half integral
+	analog begin 
+
+		// Assign bias conditions
+		v_vd = V(Vdrain);
+		v_vs = V(Vsource);
+		v_vg = V(Vgate);
+		v_phi = V(phi);
+
+		//Assign basic parameters
+		degen=2.0;		//valley degenergy
+		mt=mt0*`m0;
+		Egh=0.5*Eg;
+
+		DOS=Lg*Wg*degen*mt/(`pi*pow(`hbar,2.0));
+		Cins=Lg*Wg*`epso*eins/tins;
+		
+		if (para_cap==1) begin
+			Cgs=0.3*Cins;
+			Cgd=0.3*Cins;
+		end
+		else begin
+			Cgs=0;
+			Cgd=0;
+		end
+
+		begin : evaluate_G_Qchannel   // function of vds and delta_phi only
+		
+			real  vds, delta_phi;
+
+			// parameters passing along
+			vds = v_vd-v_vs;
+			delta_phi =v_phi-v_vs;
+			
+			// evaluate charge density
+			G_Qchannel=pow(`q,2.0)*DOS*`kBT*(0.5*ln(1+exp((Ef-Egh+delta_phi)/`kBT))+0.5*ln(1+exp((Ef-Egh+delta_phi-vds)/`kBT)));
+
+		end  // End : evaluate_G_Qchannel
+
+		begin : evaluate_G_Qtotal  //function of vgs and delta_phi
+			real vgs, vds, delta_phi;
+			// parameters passing along
+			vgs = v_vg-v_vs;
+			vds = v_vd-v_vs;
+			delta_phi =v_phi-v_vs;
+
+			G_Qtotal=Cins*(vgs-VFB-delta_phi);
+		end  // End : evaluate_G_Qtotal
+		
+		begin : evaluate_I_DS
+
+			real vgs, vds, delta_phi;
+			real zeta11, zeta21;
+			real I0;
+			real I11, I21;
+
+			// parameters passing along
+			vgs = v_vg-v_vs;
+			vds = v_vd-v_vs;
+			delta_phi =v_phi-v_vs;
+			$display ("delta_phi : %f ",delta_phi);
+			// zeta definition (positive half states)
+			zeta11=(Ef-Egh+delta_phi)/`kBT;
+			// zeta definition (negattive half states)
+			zeta21=(Ef-Egh+delta_phi-vds)/`kBT;
+
+			I0=pow(`q,2.0)*DOS/Lg*`kBT*sqrt(2.0*`q*`kBT/(`pi*mt));
+
+			I11=fermi_half_int(zeta11);
+			I21=fermi_half_int(zeta21);
+			
+			I_DS=(0.5*I0*I11-0.5*I0*I21);
+
+		end  // End : evaluate_I_DS
+		
+		// Placing components
+		// Voltage Controlled current source
+		I(Drain,Source) <+ I_DS;
+
+		// Gate to Source/Drain/Sub capacitance
+		I(Gate,Source) <+ ddt(Cgs*V(Gate,Source));
+		I(Gate,Drain)  <+ ddt(Cgd*V(Gate,Drain));
+
+		// delta_phi calculation network
+			
+		I(Vdrain,phi)  <+ G_Qtotal;
+		I(phi,Vsource)     <+ G_Qchannel;
+
+		// The dummy controlled voltage source to get vds and delta_phi
+		V(Vdrain,Vsource)   <+ 1*V(Drain,Source);
+		V(Vgate,Vsource)    <+ 1*V(Gate,Source);
+
+	end // End: analog begin
+endmodule
+
