@@ -1,0 +1,36 @@
+// netlist file
+// sram circuit
+
+simulator lang = spectre
+
+global gnd
+
+ahdl_include "nfet.va"
+ahdl_include "pfet.va"
+
+nfet1 (n2 n1 gnd) bal_nFET
+pfet1 (n2 n1 n3) bal_pFET
+nfet2 (n1 n2 gnd) bal_nFET
+pfet2 (n1 n2 n3) bal_pFET
+
+// access transistors
+nfet3 (n1 n4 n5) bal_nFET
+nfet4 (n2 n4 n6) bal_nFET
+
+v1 (n3 gnd) vsource dc=400m
+// BL and BLN
+v2 (n5 gnd) vsource dc=0m
+v3 (n6 gnd) vsource dc=400m
+
+// WL
+//v4 (n4 gnd) vsource dc=0m
+v4 (n4 gnd) vsource type=pulse dc=0 val0=0 val1=400m width=20n period=40n rise=1n fall=1n
+
+// initial condition
+ic n1=400m
+saveNodes options save=allpub
+
+//paramSwp dc start=0 stop=400m param=dc dev=v4
+trantran tran stop=100n
+ 
+

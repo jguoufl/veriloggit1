@@ -1,0 +1,19 @@
+// VerilogA simple resistor
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module res(vp, vn);
+
+    inout vp, vn;
+    electrical vp, vn;
+
+    parameter real r = 1e3;
+
+    analog begin
+
+        I(vp,vn)<+ V(vp,vn)/r;  
+    end
+
+
+endmodule
