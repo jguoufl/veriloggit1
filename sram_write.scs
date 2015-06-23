@@ -1,0 +1,48 @@
+// Generated for: spectre
+// Generated on: Jun 23 16:11:58 2015
+// Design library name: tmdc_fet
+// Design cell name: sram_write
+// Design view name: schematic
+simulator lang=spectre
+global 0 vdd!
+
+// Library name: tmdc_fet
+// Cell name: inverter
+// View name: schematic
+subckt inverter In Out
+    I8 (Out In 0) TMDC_nFET
+    I7 (Out In vdd!) TMDC_pFET
+ends inverter
+// End of subcircuit definition.
+
+// Library name: tmdc_fet
+// Cell name: sram_write
+// View name: schematic
+V0 (vdd! 0) vsource dc=500.0m type=dc
+V1 (WL 0) vsource type=pulse val0=0 val1=0.5V period=1n delay=100.0p \
+        rise=100.0p fall=100.0p width=500.0p
+C1 (NBL 0) capacitor c=100.0a
+C0 (BL 0) capacitor c=100.0a
+I3 (NBL WL NBL_internal) TMDC_nFET
+I2 (BL WL BLinternal) TMDC_nFET
+I9 (0 BL) inverter
+I10 (vdd! NBL) inverter
+I1 (NBL_internal BLinternal) inverter
+I0 (BLinternal NBL_internal) inverter
+ic NBL=0 BLinternal=0 NBL_internal=0.5 BL=0.5 
+simulatorOptions options reltol=1e-3 vabstol=1e-6 iabstol=1e-12 temp=27 \
+    tnom=27 scalem=1.0 scale=1.0 gmin=1e-12 rforce=1 maxnotes=5 maxwarns=5 \
+    digits=5 cols=80 pivrel=1e-3 sensfile="../psf/sens.output" \
+    checklimitdest=psf 
+tran tran stop=1n write="spectre.ic" writefinal="spectre.fc" \
+    annotate=status maxiters=5 
+finalTimeOP info what=oppoint where=rawfile
+modelParameter info what=models where=rawfile
+element info what=inst where=rawfile
+outputParameter info what=output where=rawfile
+designParamVals info what=parameters where=rawfile
+primitives info what=primitives where=rawfile
+subckts info what=subckts  where=rawfile
+saveOptions options save=allpub
+ahdl_include "nfet.va"
+ahdl_include "pfet.va"

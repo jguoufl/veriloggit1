@@ -1,0 +1,44 @@
+// Generated for: spectre
+// Generated on: Jun 22 22:56:13 2015
+// Design library name: nmos2
+// Design cell name: Ringos
+// Design view name: schematic
+simulator lang=spectre
+global 0 vdd!
+parameters Vsup=0.5
+
+// Library name: nmos2
+// Cell name: inverter
+// View name: schematic
+subckt inverter In Out
+    I8 (Out In 0) TMDC_nFET
+    I7 (Out In vdd!) TMDC_pFET
+ends inverter
+// End of subcircuit definition.
+
+// Library name: nmos2
+// Cell name: Ringos
+// View name: schematic
+V0 (vdd! 0) vsource dc=Vsup type=dc
+I4 (net6 net11) inverter
+I3 (V3 net6) inverter
+I2 (V2 V3) inverter
+I1 (V1 V2) inverter
+I0 (net11 V1) inverter
+ic net11=0 
+simulatorOptions options reltol=1e-3 vabstol=1e-6 iabstol=1e-12 temp=27 \
+    tnom=27 scalem=1.0 scale=1.0 gmin=1e-12 rforce=1 maxnotes=5 maxwarns=5 \
+    digits=5 cols=80 pivrel=1e-3 sensfile="../psf/sens.output" \
+    checklimitdest=psf 
+tran tran stop=500p write="spectre.ic" writefinal="spectre.fc" \
+    annotate=status maxiters=5 
+finalTimeOP info what=oppoint where=rawfile
+modelParameter info what=models where=rawfile
+element info what=inst where=rawfile
+outputParameter info what=output where=rawfile
+designParamVals info what=parameters where=rawfile
+primitives info what=primitives where=rawfile
+subckts info what=subckts  where=rawfile
+saveOptions options save=allpub
+ahdl_include "nfet.va"
+ahdl_include "pfet.va"
