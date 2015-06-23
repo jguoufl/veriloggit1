@@ -5,8 +5,8 @@ simulator lang = spectre
 
 global gnd
 
-ahdl_include "nfet.va"
-ahdl_include "pfet.va"
+ahdl_include "nfet_my_bal.va"
+ahdl_include "pfet_my_bal.va"
 
 nfet1 (n2 n1 gnd) bal_nFET
 pfet1 (n2 n1 n3) bal_pFET

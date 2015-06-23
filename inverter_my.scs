@@ -1,0 +1,21 @@
+// netlist file
+// res/cap test circuit
+
+simulator lang = spectre
+
+global gnd
+
+ahdl_include "nfet.va"
+ahdl_include "pfet.va"
+
+nfet1 (n2 n1 gnd) bal_nFET
+pfet1 (n2 n1 n3) bal_pFET
+c1 (n2 gnd) capacitor c=2.5u
+v1 (n3 gnd) vsource dc=400m
+v2 (n1 gnd) vsource dc=400m
+
+saveNodes options save=allpub
+save c1
+paramSwp dc start=0 stop=400m param=dc dev=v2
+//trantran tran stop=100n 
+
